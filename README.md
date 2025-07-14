@@ -24,10 +24,11 @@ backend-node/
 ## 🔐 Environment Variables
 
 Create a `.env` file inside `backend-node/`:
-
+```bash
 GEMINI_API_KEY=your_gemini_api_key
 SMTP_USER=your_gmail@gmail.com
 SMTP_PASS=your_app_password
+```
 
 
 > Use Gmail with "App Passwords" enabled for security.
@@ -64,7 +65,7 @@ Body:
 
 ## 🧪 Local Development
 ```bash
-git clone https://github.com/yourusername/eventocrat-backend.git
+git clone https://github.com/Gyanvir/eventocrat-backend.git
 cd eventocrat-backend
 npm install
 npm run dev
