@@ -16,59 +16,100 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // GEMINI PITCH GENERATOR
 app.post("/generate", async (req, res) => {
-  const { event, company, senderType = "student" } = req.body;
+  console.log("Hello!")
+  const { event, company, senderType = "student", userDetails = {} } = req.body;
 
   if (!event || !company) {
     return res.status(400).json({ error: "Missing event or company in request." });
   }
-
+  const userName = userDetails.name;
+  const userTitle = userDetails.title;
+  const userOrganization = userDetails.organization;
   let prompt = "";
-
+  console.log(company);
+  console.log(event);
+  console.log(userDetails);
   if (senderType === "company") {
+    console.log(company);
     // Company sending to student
     prompt = `
-Act as an expert brand partnership strategist.
-Help a company write a professional message offering sponsorship to a college event.
+Act as an expert in sponsorship outreach for college events.
+Write a short, polite, and convincing email from a student at a college to a company, requesting sponsorship. STRICTLY RETURN THE EMAIL CONTENT ONLY!
 
-Company:
-- Name: ${company.name}
-- Industry: ${company.industry}
-- Budget Range: ₹${company.budgetRange.min} - ₹${company.budgetRange.max}
+Strictly avoid using placeholders like [Your Name], [College Name], or anything in square brackets. If any data is missing, use reasonable defaults instead. The output should look like a fully ready-to-send email.
+
+Here are the details:
 
 Event:
-- Title: ${event.title}
-- Description: ${event.description}
-- Expected Sponsorship: ₹${event.expectedSponsorshipAmount}
+- Title: ${event.title || "Campus Fest 2025"}
+- Description: ${event.description || "A vibrant student event featuring games, music, and workshops"}
+- Expected Sponsorship: ₹${event.expectedSponsorshipAmount || "25000"}
+- Estimated Attendees: ${event.estimatedAttendees || "200+"}
+- Contact Date: ${event.contactDate || "20th August 2025"}
+- Contact Location: ${event.contactLocation || "Main Auditorium, XYZ University"}
+- Organizer Name: ${userName || "Abhinav Mangalore"}
+- Organizer Title: ${userTitle || "Campus Co-Lead"}
+- Organizer Organization: ${userOrganization || "DSEU"}
 
-Write a polite and attractive sponsorship offer email.
-    `;
+Company:
+- Name: ${company.name || "EventoCrat"}
+- Industry: ${company.industry || "Marketing"}
+- Budget Range: ₹${company.budgetRange?.min || 10000} - ₹${company.budgetRange?.max || 20000}
+- Contact Person Name: ${company.contactPersonName || "Sponsorship Manager"}
+
+Please make the email sound warm, confident, and professional.
+`;;
   } else {
     // Default: student sending to company
     prompt = `
 Act as an expert in sponsorship outreach for college events.
-Help the student write a professional sponsorship email.
+Write a short, polite, and convincing **email from a student** at a college to a company, requesting sponsorship.
 
+🚫 Do NOT include introductory text like "Here's a sample email" or "Subject:"
+✅ Only return the actual email body as plain text.
+❌ Do NOT include ANY square brackets or placeholders. If something is missing, use realistic defaults.
+
+--- DETAILS ---
 Event:
-- Title: ${event.title}
-- Description: ${event.description}
-- Expected Sponsorship: ₹${event.expectedSponsorshipAmount}
+- Title: ${event.title || "Campus Fest 2025"}
+- Description: ${event.description || "A vibrant student event featuring games, music, and workshops"}
+- Expected Sponsorship: ₹${event.expectedSponsorshipAmount || "25000"}
+- Estimated Attendees: ${event.estimatedAttendees || "200+"}
+- Contact Date: ${event.contactDate || "20th August 2025"}
+- Contact Location: ${event.contactLocation || "Main Auditorium, XYZ University"}
+- Organizer Name: ${userName || "Abhinav Mangalore"}
+- Organizer Title: ${userTitle || "Campus Co-Lead"}
+- Organizer Organization: ${userOrganization || "DSEU"}
 
 Company:
-- Name: ${company.name}
-- Industry: ${company.industry}
-- Budget Range: ₹${company.budgetRange.min} - ₹${company.budgetRange.max}
+- Name: ${company.name || "EventoCrat"}
+- Industry: ${company.industry || "Marketing"}
+- Budget Range: ₹${company.budgetRange?.min || 10000} - ₹${company.budgetRange?.max || 20000}
+- Contact Person Name: ${company.contactPersonName || "Sponsorship Manager"}
 
-Write a short, polite and convincing sponsorship pitch.
-    `;
+Tone: warm, confident, professional.
+`;
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "models/gemini-2.0-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+    let processedText = text
+    // .replace(/\[Your Name\]/gi, userName || "User Name")
+    //   .replace(/\[Your Title\]/gi, userTitle || "user Title")
+    //   .replace(/\[College Name\]/gi, userOrganization || "Sample Organization")
+    //   .replace(/\[Student's Name\]/gi, userName || "User Name")
+    //   .replace(/\[Student's Phone Number\]/gi, "987654321")
+    //   .replace(/\[Student's Email Address\]/gi, "johndoes@gmail.com")
+    //   .replace(/\[University Name\]/gi, userOrganization || "Sample Organization")
+    //   .replace(/\[Your Email Address\]/gi, "org@gmail.com")
+    //   .replace(/\[Your Phone Number\]/gi, "9876543210")
+    //   .replace(/\[Contact Person Name at EventoCrat\]/gi, company.contactPersonName || "Sponsorship Manager")
+    //   .replace(/\[.*?\]/g, "");
 
-    res.json({ pitch: text });
+    res.json({ pitch: processedText });
   } catch (error) {
     console.error("❌ Gemini Error:", error);
     res.status(500).json({ error: "Failed to generate pitch." });
@@ -77,6 +118,7 @@ Write a short, polite and convincing sponsorship pitch.
 
 // SMTP MAIL SENDER
 app.post("/send-email", async (req, res) => {
+  console.log("🔥 Sending email to:", req.body);
   const { to, subject, text, fromName, replyTo } = req.body;
 
   try {
